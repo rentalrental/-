@@ -9,7 +9,7 @@ export function FriendMenu({ slug }: { slug: string }) {
   const [items, setItems] = useState<MenuItem[]>([]);
   const [category, setCategory] = useState<Category | "all">("all");
   const [cart, setCart] = useState<Cart>({});
-  const [form, setForm] = useState({ guest_name: "", contact: "", requested_time: "", note: "" });
+  const [form, setForm] = useState({ guest_name: "", note: "" });
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
 
@@ -57,7 +57,10 @@ export function FriendMenu({ slug }: { slug: string }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         kitchen_slug: slug,
-        ...form,
+        guest_name: form.guest_name,
+        note: form.note,
+        contact: "",
+        requested_time: "",
         items: cartItems.map((entry) => ({ menu_item_id: entry.item.id, quantity: entry.quantity }))
       })
     });
@@ -68,7 +71,7 @@ export function FriendMenu({ slug }: { slug: string }) {
     }
 
     setCart({});
-    setForm({ guest_name: "", contact: "", requested_time: "", note: "" });
+    setForm({ guest_name: "", note: "" });
     setMessage(`订单已提交：${data.order.id}`);
   }
 
@@ -144,16 +147,8 @@ export function FriendMenu({ slug }: { slug: string }) {
               <input value={form.guest_name} onChange={(event) => setForm({ ...form, guest_name: event.target.value })} required />
             </label>
             <label>
-              联系方式
-              <input value={form.contact} onChange={(event) => setForm({ ...form, contact: event.target.value })} />
-            </label>
-            <label>
-              用餐时间
-              <input value={form.requested_time} onChange={(event) => setForm({ ...form, requested_time: event.target.value })} placeholder="例如：周六 19:00" />
-            </label>
-            <label>
               备注
-              <textarea value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="忌口、少辣、取餐说明" />
+              <textarea value={form.note} onChange={(event) => setForm({ ...form, note: event.target.value })} placeholder="忌口、少辣、份量、取餐说明" />
             </label>
             <button className="button primary" type="submit">
               提交订单

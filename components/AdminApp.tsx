@@ -28,6 +28,7 @@ export function AdminApp() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
 
   useEffect(() => {
     const saved = window.sessionStorage.getItem("warmKitchenAdminToken") || "";
@@ -178,6 +179,34 @@ export function AdminApp() {
     if (response.ok) loadOrders();
   }
 
+  async function uploadImage(file: File | undefined) {
+    if (!file) return;
+    if (!token) {
+      setMessage("先输入主人密码");
+      return;
+    }
+
+    setImageUploading(true);
+    const body = new FormData();
+    body.append("file", file);
+
+    const response = await fetch("/api/upload", {
+      method: "POST",
+      headers: { "x-admin-token": token },
+      body
+    });
+    const data = await response.json();
+    setImageUploading(false);
+
+    if (!response.ok) {
+      setMessage(data.error || "图片上传失败");
+      return;
+    }
+
+    setForm((current) => ({ ...current, image_url: data.url }));
+    setMessage("图片已上传，记得保存菜品");
+  }
+
   return (
     <main className="appShell">
       <header className="appHeader">
@@ -301,6 +330,16 @@ export function AdminApp() {
               图片 URL
               <input value={form.image_url} onChange={(event) => setForm({ ...form, image_url: event.target.value })} />
             </label>
+            <label>
+              一键上传图片
+              <input
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                disabled={imageUploading}
+                onChange={(event) => uploadImage(event.target.files?.[0])}
+                type="file"
+              />
+            </label>
+            {imageUploading ? <p className="mutedText">图片上传中...</p> : null}
             <div className="split">
               <label>
                 每日限量

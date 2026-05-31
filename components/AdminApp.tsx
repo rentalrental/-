@@ -22,6 +22,7 @@ const emptyForm = {
 export function AdminApp() {
   const [token, setToken] = useState("");
   const [tokenInput, setTokenInput] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
   const [tab, setTab] = useState<"menu" | "orders" | "share">("menu");
   const [items, setItems] = useState<MenuItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -30,14 +31,9 @@ export function AdminApp() {
 
   useEffect(() => {
     const saved = window.sessionStorage.getItem("warmKitchenAdminToken") || "";
-    setToken(saved);
     setTokenInput(saved);
+    if (saved) validateAdmin(saved);
   }, []);
-
-  useEffect(() => {
-    loadMenu();
-    if (token) loadOrders(token);
-  }, [token]);
 
   const friendLink = useMemo(() => {
     if (typeof window === "undefined") return `/m/${kitchenSlug}`;
@@ -61,10 +57,43 @@ export function AdminApp() {
     else setMessage(data.error || "订单读取失败");
   }
 
-  function login(event: FormEvent) {
+  async function validateAdmin(authToken: string) {
+    const response = await fetch(`/api/orders?slug=${kitchenSlug}`, {
+      headers: { "x-admin-token": authToken }
+    });
+    const data = await response.json();
+    if (!response.ok) {
+      setIsUnlocked(false);
+      setToken("");
+      window.sessionStorage.removeItem("warmKitchenAdminToken");
+      setMessage(data.error === "Unauthorized" ? "主人密码不对" : data.error || "进入后台失败");
+      return false;
+    }
+    setToken(authToken);
+    setIsUnlocked(true);
+    setOrders(data.orders || []);
+    setMessage("已进入后台");
+    await loadMenu();
+    return true;
+  }
+
+  async function login(event: FormEvent) {
     event.preventDefault();
+    if (!tokenInput.trim()) {
+      setMessage("请输入主人密码");
+      return;
+    }
     window.sessionStorage.setItem("warmKitchenAdminToken", tokenInput);
-    setToken(tokenInput);
+    await validateAdmin(tokenInput);
+  }
+
+  function logout() {
+    window.sessionStorage.removeItem("warmKitchenAdminToken");
+    setToken("");
+    setTokenInput("");
+    setIsUnlocked(false);
+    setOrders([]);
+    setMessage("已退出后台");
   }
 
   function editItem(item: MenuItem) {
@@ -161,31 +190,52 @@ export function AdminApp() {
         </a>
       </header>
 
-      <form className="loginBar" onSubmit={login}>
-        <label>
-          主人密码
-          <input value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} placeholder="ADMIN_TOKEN" type="password" />
-        </label>
-        <button className="button primary" type="submit">
-          进入后台
-        </button>
-      </form>
+      {!isUnlocked ? (
+        <form className="loginBar" onSubmit={login}>
+          <label>
+            主人密码
+            <input value={tokenInput} onChange={(event) => setTokenInput(event.target.value)} placeholder="ADMIN_TOKEN" type="password" />
+          </label>
+          <button className="button primary" type="submit">
+            进入后台
+          </button>
+        </form>
+      ) : (
+        <div className="loginBar">
+          <div>
+            <strong>已进入后台</strong>
+            <p className="mutedText">现在可以编辑菜单、查看订单和复制分享链接。</p>
+          </div>
+          <button className="button" onClick={logout} type="button">
+            退出
+          </button>
+        </div>
+      )}
 
       {message ? <div className="notice">{message}</div> : null}
 
-      <nav className="tabs">
-        <button className={tab === "menu" ? "active" : ""} onClick={() => setTab("menu")} type="button">
-          菜单管理
-        </button>
-        <button className={tab === "orders" ? "active" : ""} onClick={() => setTab("orders")} type="button">
-          订单板
-        </button>
-        <button className={tab === "share" ? "active" : ""} onClick={() => setTab("share")} type="button">
-          分享
-        </button>
-      </nav>
+      {!isUnlocked ? (
+        <section className="panel">
+          <h2>需要主人密码</h2>
+          <p className="mutedText">输入你在 Vercel 里设置的 ADMIN_TOKEN 后，后台管理功能会显示出来。</p>
+        </section>
+      ) : null}
 
-      {tab === "menu" ? (
+      {isUnlocked ? (
+        <nav className="tabs">
+          <button className={tab === "menu" ? "active" : ""} onClick={() => setTab("menu")} type="button">
+            菜单管理
+          </button>
+          <button className={tab === "orders" ? "active" : ""} onClick={() => setTab("orders")} type="button">
+            订单板
+          </button>
+          <button className={tab === "share" ? "active" : ""} onClick={() => setTab("share")} type="button">
+            分享
+          </button>
+        </nav>
+      ) : null}
+
+      {isUnlocked && tab === "menu" ? (
         <section className="twoPane">
           <div className="grid">
             {items.map((item) => (
@@ -281,7 +331,7 @@ export function AdminApp() {
         </section>
       ) : null}
 
-      {tab === "orders" ? (
+      {isUnlocked && tab === "orders" ? (
         <section className="panel">
           <div className="sectionHeader">
             <h2>订单板</h2>
@@ -312,7 +362,7 @@ export function AdminApp() {
         </section>
       ) : null}
 
-      {tab === "share" ? (
+      {isUnlocked && tab === "share" ? (
         <section className="panel">
           <h2>固定朋友链接</h2>
           <p className="mutedText">部署到公网后，这个链接可以直接发给朋友。菜单从数据库读取，你在后台改完，朋友刷新就能看到。</p>

@@ -1,6 +1,8 @@
 export type Category = "main" | "dessert" | "drink";
 export type OrderStatus = "pending" | "accepted" | "cooking" | "completed" | "cancelled";
 
+export const categoryOrder: Category[] = ["main", "dessert", "drink"];
+
 export const categoryLabels: Record<Category, string> = {
   main: "主菜",
   dessert: "甜点",

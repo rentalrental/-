@@ -1,13 +1,12 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { categoryLabels, type Category, type MenuItem } from "@/lib/types";
+import { categoryLabels, categoryOrder, type MenuItem } from "@/lib/types";
 
 type Cart = Record<string, number>;
 
 export function FriendMenu({ slug }: { slug: string }) {
   const [items, setItems] = useState<MenuItem[]>([]);
-  const [category, setCategory] = useState<Category | "all">("all");
   const [cart, setCart] = useState<Cart>({});
   const [form, setForm] = useState({ guest_name: "", note: "" });
   const [message, setMessage] = useState("");
@@ -20,9 +19,14 @@ export function FriendMenu({ slug }: { slug: string }) {
       .finally(() => setLoading(false));
   }, [slug]);
 
-  const visible = useMemo(() => {
-    return items.filter((item) => item.available && (category === "all" || item.category === category));
-  }, [category, items]);
+  const availableItems = useMemo(() => items.filter((item) => item.available), [items]);
+
+  const sections = useMemo(() => {
+    return categoryOrder.map((sectionCategory) => ({
+      category: sectionCategory,
+      items: availableItems.filter((item) => item.category === sectionCategory)
+    }));
+  }, [availableItems]);
 
   const cartItems = useMemo(() => {
     return Object.entries(cart)
@@ -81,49 +85,52 @@ export function FriendMenu({ slug }: { slug: string }) {
         <div>
           <p className="eyebrow">朋友点单</p>
           <h1>暖厨今日菜单</h1>
-          <p className="mutedText">选好菜品和时间后提交，厨房会收到通知。</p>
+          <p className="mutedText">选好菜品后提交，厨房会收到通知。</p>
         </div>
       </header>
 
       {message ? <div className="notice">{message}</div> : null}
 
-      <nav className="tabs">
-        <button className={category === "all" ? "active" : ""} onClick={() => setCategory("all")} type="button">
-          全部
-        </button>
-        {(Object.keys(categoryLabels) as Category[]).map((key) => (
-          <button className={category === key ? "active" : ""} key={key} onClick={() => setCategory(key)} type="button">
-            {categoryLabels[key]}
-          </button>
-        ))}
-      </nav>
-
       <section className="twoPane">
-        <div className="grid">
+        <div className="menuSections">
           {loading ? <div className="panel">菜单加载中</div> : null}
-          {!loading && !visible.length ? <div className="panel">今天这个分类暂时没有可点菜品。</div> : null}
-          {visible.map((item) => (
-            <article className="dish" key={item.id}>
-              {item.image_url ? <img alt={item.name} className="dishImage" src={item.image_url} /> : <div className="imageFallback">{categoryLabels[item.category]}</div>}
-              <div className="dishBody">
-                <div className="dishTop">
-                  <h3>{item.name}</h3>
-                  <strong>¥{item.price}</strong>
-                </div>
-                <p>{item.description}</p>
-                <div className="tagRow">
-                  <span>{categoryLabels[item.category]}</span>
-                  {item.recommended ? <span className="hot">推荐</span> : null}
-                  {item.prep_time ? <span>{item.prep_time}</span> : null}
-                </div>
-                <div className="qty">
-                  <button onClick={() => changeQuantity(item.id, -1)} type="button">−</button>
-                  <span>{cart[item.id] || 0}</span>
-                  <button onClick={() => changeQuantity(item.id, 1)} type="button">+</button>
-                </div>
+          {!loading && !availableItems.length ? <div className="panel">今天暂时没有可点菜品。</div> : null}
+          {!loading && availableItems.length ? sections.map((section) => (
+            <section className="menuSection" key={section.category}>
+              <div className="sectionHeader categoryHeading">
+                <h2>{categoryLabels[section.category]}</h2>
+                <span>{section.items.length} 道</span>
               </div>
-            </article>
-          ))}
+              {section.items.length ? (
+                <div className="grid">
+                  {section.items.map((item) => (
+                    <article className="dish" key={item.id}>
+                      {item.image_url ? <img alt={item.name} className="dishImage" src={item.image_url} /> : <div className="imageFallback">{categoryLabels[item.category]}</div>}
+                      <div className="dishBody">
+                        <div className="dishTop">
+                          <h3>{item.name}</h3>
+                          <strong>¥{item.price}</strong>
+                        </div>
+                        <p>{item.description}</p>
+                        <div className="tagRow">
+                          <span>{categoryLabels[item.category]}</span>
+                          {item.recommended ? <span className="hot">推荐</span> : null}
+                          {item.prep_time ? <span>{item.prep_time}</span> : null}
+                        </div>
+                        <div className="qty">
+                          <button onClick={() => changeQuantity(item.id, -1)} type="button">−</button>
+                          <span>{cart[item.id] || 0}</span>
+                          <button onClick={() => changeQuantity(item.id, 1)} type="button">+</button>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : (
+                <p className="mutedText">这个分类暂时没有可点菜品。</p>
+              )}
+            </section>
+          )) : null}
         </div>
 
         <aside className="panel sticky">

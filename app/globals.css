@@ -213,6 +213,31 @@ h3 {
   gap: 14px;
 }
 
+.menuSections,
+.menuSection {
+  display: grid;
+  gap: 14px;
+}
+
+.menuSections {
+  gap: 24px;
+}
+
+.categoryHeading {
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 8px;
+}
+
+.categoryHeading h2 {
+  margin: 0;
+}
+
+.categoryHeading span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
 .dish {
   overflow: hidden;
 }

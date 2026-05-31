@@ -19,6 +19,13 @@ const emptyForm = {
   sort_order: 0
 };
 
+type NotificationSettings = {
+  hasResendApiKey: boolean;
+  hasWebhookUrl: boolean;
+  notifyEmail: string;
+  fromEmail: string;
+};
+
 export function AdminApp() {
   const [token, setToken] = useState("");
   const [tokenInput, setTokenInput] = useState("");
@@ -29,6 +36,8 @@ export function AdminApp() {
   const [form, setForm] = useState(emptyForm);
   const [message, setMessage] = useState("");
   const [imageUploading, setImageUploading] = useState(false);
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
+  const [testSending, setTestSending] = useState(false);
 
   useEffect(() => {
     const saved = window.sessionStorage.getItem("warmKitchenAdminToken") || "";
@@ -58,6 +67,15 @@ export function AdminApp() {
     else setMessage(data.error || "订单读取失败");
   }
 
+  async function loadNotificationSettings(authToken = token) {
+    if (!authToken) return;
+    const response = await fetch("/api/notifications", {
+      headers: { "x-admin-token": authToken }
+    });
+    const data = await response.json();
+    if (response.ok) setNotificationSettings(data.settings);
+  }
+
   async function validateAdmin(authToken: string) {
     const response = await fetch(`/api/orders?slug=${kitchenSlug}`, {
       headers: { "x-admin-token": authToken }
@@ -75,6 +93,7 @@ export function AdminApp() {
     setOrders(data.orders || []);
     setMessage("已进入后台");
     await loadMenu();
+    await loadNotificationSettings(authToken);
     return true;
   }
 
@@ -94,6 +113,7 @@ export function AdminApp() {
     setTokenInput("");
     setIsUnlocked(false);
     setOrders([]);
+    setNotificationSettings(null);
     setMessage("已退出后台");
   }
 
@@ -205,6 +225,25 @@ export function AdminApp() {
 
     setForm((current) => ({ ...current, image_url: data.url }));
     setMessage("图片已上传，记得保存菜品");
+  }
+
+  async function sendTestNotification() {
+    if (!token) return;
+    setTestSending(true);
+    const response = await fetch("/api/notifications", {
+      method: "POST",
+      headers: { "x-admin-token": token }
+    });
+    const data = await response.json();
+    setTestSending(false);
+
+    if (!response.ok) {
+      setMessage(data.error === "RESEND_API_KEY is not configured" ? "还没配置 RESEND_API_KEY，暂时不能发邮件" : data.error || "测试邮件发送失败");
+      await loadNotificationSettings();
+      return;
+    }
+
+    setMessage("测试邮件已发送，请查看 Outlook 收件箱或垃圾邮件");
   }
 
   return (
@@ -402,14 +441,38 @@ export function AdminApp() {
       ) : null}
 
       {isUnlocked && tab === "share" ? (
-        <section className="panel">
-          <h2>固定朋友链接</h2>
-          <p className="mutedText">部署到公网后，这个链接可以直接发给朋友。菜单从数据库读取，你在后台改完，朋友刷新就能看到。</p>
-          <textarea className="shareBox" readOnly value={friendLink} />
-          <button className="button primary" onClick={() => navigator.clipboard.writeText(friendLink)} type="button">
-            复制链接
-          </button>
-        </section>
+        <div className="stack">
+          <section className="panel">
+            <h2>固定朋友链接</h2>
+            <p className="mutedText">部署到公网后，这个链接可以直接发给朋友。菜单从数据库读取，你在后台改完，朋友刷新就能看到。</p>
+            <textarea className="shareBox" readOnly value={friendLink} />
+            <button className="button primary" onClick={() => navigator.clipboard.writeText(friendLink)} type="button">
+              复制链接
+            </button>
+          </section>
+
+          <section className="panel">
+            <div className="sectionHeader">
+              <h2>通知状态</h2>
+              <button className="button small" onClick={() => loadNotificationSettings()} type="button">
+                刷新
+              </button>
+            </div>
+            <div className="statusRow">
+              <span className={notificationSettings?.hasResendApiKey ? "statusPill ok" : "statusPill warn"}>
+                {notificationSettings?.hasResendApiKey ? "邮件已连接" : "缺少邮件 Key"}
+              </span>
+              <span className={notificationSettings?.hasWebhookUrl ? "statusPill ok" : "statusPill neutral"}>
+                {notificationSettings?.hasWebhookUrl ? "Webhook 已连接" : "未开 Webhook"}
+              </span>
+            </div>
+            <p className="mutedText">收件邮箱：{notificationSettings?.notifyEmail || "rentongg@outlook.com"}</p>
+            <p className="mutedText">发件地址：{notificationSettings?.fromEmail || "Warm Kitchen <onboarding@resend.dev>"}</p>
+            <button className="button primary" disabled={testSending || !notificationSettings?.hasResendApiKey} onClick={sendTestNotification} type="button">
+              {testSending ? "发送中..." : "发送测试邮件"}
+            </button>
+          </section>
+        </div>
       ) : null}
     </main>
   );

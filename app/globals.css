@@ -44,6 +44,11 @@ button {
   cursor: pointer;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.52;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -123,7 +128,8 @@ h3 {
 
 .buttonRow,
 .tabs,
-.sectionHeader {
+.sectionHeader,
+.statusRow {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -275,6 +281,39 @@ h3 {
 
 .panel {
   padding: 18px;
+}
+
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.statusPill {
+  display: inline-flex;
+  min-height: 26px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.statusPill.ok {
+  border-color: color-mix(in oklch, var(--sage), var(--line) 32%);
+  background: var(--sage-soft);
+  color: var(--sage-ink);
+}
+
+.statusPill.warn {
+  border-color: color-mix(in oklch, var(--tomato), var(--line) 32%);
+  background: var(--tomato-soft);
+  color: oklch(91% 0.045 32);
+}
+
+.statusPill.neutral {
+  background: var(--surface-2);
+  color: var(--muted);
 }
 
 .sticky {

@@ -9,13 +9,25 @@ type NotificationOrder = {
   total: number;
 };
 
+const defaultNotifyEmail = "rentongg@outlook.com";
+const defaultFromEmail = "Warm Kitchen <onboarding@resend.dev>";
+
+export function getNotificationSettings() {
+  return {
+    hasResendApiKey: Boolean(process.env.RESEND_API_KEY),
+    hasWebhookUrl: Boolean(process.env.NOTIFY_WEBHOOK_URL),
+    notifyEmail: process.env.ORDER_NOTIFY_EMAIL || defaultNotifyEmail,
+    fromEmail: process.env.ORDER_FROM_EMAIL || defaultFromEmail
+  };
+}
+
 export async function notifyNewOrder(order: NotificationOrder, items: OrderItem[]) {
   const text = buildOrderText(order, items);
   const tasks: Promise<unknown>[] = [];
-  const notifyEmail = process.env.ORDER_NOTIFY_EMAIL || "rentongg@outlook.com";
+  const settings = getNotificationSettings();
 
-  if (process.env.RESEND_API_KEY) {
-    tasks.push(sendEmail(text, order, notifyEmail));
+  if (settings.hasResendApiKey) {
+    tasks.push(sendEmail(text, `暖厨新订单：${order.guest_name}`, settings.notifyEmail, settings.fromEmail));
   }
 
   if (process.env.NOTIFY_WEBHOOK_URL) {
@@ -27,6 +39,20 @@ export async function notifyNewOrder(order: NotificationOrder, items: OrderItem[
   if (failed.length) {
     console.error("Notification failures", failed);
   }
+}
+
+export async function sendTestEmail() {
+  const settings = getNotificationSettings();
+  if (!settings.hasResendApiKey) {
+    throw new Error("RESEND_API_KEY is not configured");
+  }
+
+  await sendEmail(
+    "暖厨邮件通知测试成功。\n以后朋友提交订单后，你会在这个邮箱收到提醒。",
+    "暖厨测试通知",
+    settings.notifyEmail,
+    settings.fromEmail
+  );
 }
 
 function buildOrderText(order: NotificationOrder, items: OrderItem[]) {
@@ -45,7 +71,7 @@ function buildOrderText(order: NotificationOrder, items: OrderItem[]) {
     .join("\n");
 }
 
-async function sendEmail(text: string, order: NotificationOrder, notifyEmail: string) {
+async function sendEmail(text: string, subject: string, notifyEmail: string, fromEmail: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -53,9 +79,9 @@ async function sendEmail(text: string, order: NotificationOrder, notifyEmail: st
       "Content-Type": "application/json"
     },
     body: JSON.stringify({
-      from: process.env.ORDER_FROM_EMAIL || "Warm Kitchen <onboarding@resend.dev>",
+      from: fromEmail,
       to: notifyEmail,
-      subject: `暖厨新订单：${order.guest_name}`,
+      subject,
       text
     })
   });

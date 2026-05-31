@@ -62,8 +62,8 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project.supabase.co
 SUPABASE_SERVICE_ROLE_KEY=你的 Supabase service_role key
 ADMIN_TOKEN=一个很长的后台密码
 RESEND_API_KEY=你的 Resend API key
-ORDER_NOTIFY_EMAIL=你的收件邮箱
-ORDER_FROM_EMAIL=Warm Kitchen <orders@你的域名.com>
+ORDER_NOTIFY_EMAIL=rentongg@outlook.com
+ORDER_FROM_EMAIL=Warm Kitchen <onboarding@resend.dev>
 NOTIFY_WEBHOOK_URL=
 ```
 
@@ -112,9 +112,9 @@ https://your-site.vercel.app/m/warm-kitchen
 推荐用 Resend：
 
 1. 创建 Resend 账号。
-2. 生成 API Key，填到 `RESEND_API_KEY`。
-3. 把你的邮箱填到 `ORDER_NOTIFY_EMAIL`。
-4. `ORDER_FROM_EMAIL` 需要使用 Resend 允许的发件地址。
+2. 生成 API Key，填到 Vercel 的 `RESEND_API_KEY`。
+3. 把 `ORDER_NOTIFY_EMAIL` 填成 `rentongg@outlook.com`。代码里也已经把这个邮箱设成默认收件人。
+4. 如果你还没有自己的发件域名，`ORDER_FROM_EMAIL` 先填 `Warm Kitchen <onboarding@resend.dev>`。
 
 如果你没有配置 Resend，订单仍会保存，只是不发邮件。
 

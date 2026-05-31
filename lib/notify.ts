@@ -12,9 +12,10 @@ type NotificationOrder = {
 export async function notifyNewOrder(order: NotificationOrder, items: OrderItem[]) {
   const text = buildOrderText(order, items);
   const tasks: Promise<unknown>[] = [];
+  const notifyEmail = process.env.ORDER_NOTIFY_EMAIL || "rentongg@outlook.com";
 
-  if (process.env.RESEND_API_KEY && process.env.ORDER_NOTIFY_EMAIL) {
-    tasks.push(sendEmail(text, order));
+  if (process.env.RESEND_API_KEY) {
+    tasks.push(sendEmail(text, order, notifyEmail));
   }
 
   if (process.env.NOTIFY_WEBHOOK_URL) {
@@ -44,7 +45,7 @@ function buildOrderText(order: NotificationOrder, items: OrderItem[]) {
     .join("\n");
 }
 
-async function sendEmail(text: string, order: NotificationOrder) {
+async function sendEmail(text: string, order: NotificationOrder, notifyEmail: string) {
   const response = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -53,7 +54,7 @@ async function sendEmail(text: string, order: NotificationOrder) {
     },
     body: JSON.stringify({
       from: process.env.ORDER_FROM_EMAIL || "Warm Kitchen <onboarding@resend.dev>",
-      to: process.env.ORDER_NOTIFY_EMAIL,
+      to: notifyEmail,
       subject: `暖厨新订单：${order.guest_name}`,
       text
     })

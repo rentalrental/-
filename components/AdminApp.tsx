@@ -26,6 +26,10 @@ type NotificationSettings = {
   fromEmail: string;
 };
 
+function visibleOrders(orders: Order[]) {
+  return orders.filter((order) => order.status !== "completed");
+}
+
 export function AdminApp() {
   const [token, setToken] = useState("");
   const [tokenInput, setTokenInput] = useState("");
@@ -63,7 +67,7 @@ export function AdminApp() {
       headers: { "x-admin-token": authToken }
     });
     const data = await response.json();
-    if (response.ok) setOrders(data.orders || []);
+    if (response.ok) setOrders(visibleOrders(data.orders || []));
     else setMessage(data.error || "订单读取失败");
   }
 
@@ -90,7 +94,7 @@ export function AdminApp() {
     }
     setToken(authToken);
     setIsUnlocked(true);
-    setOrders(data.orders || []);
+    setOrders(visibleOrders(data.orders || []));
     setMessage("已进入后台");
     await loadMenu();
     await loadNotificationSettings(authToken);
@@ -196,7 +200,19 @@ export function AdminApp() {
       },
       body: JSON.stringify({ status })
     });
-    if (response.ok) loadOrders();
+    const data = await response.json();
+    if (!response.ok) {
+      setMessage(data.error || "订单状态更新失败");
+      return;
+    }
+
+    if (status === "completed") {
+      setOrders((current) => current.filter((order) => order.id !== orderId));
+      setMessage("订单已完成，已从订单板移出");
+      return;
+    }
+
+    setOrders((current) => current.map((order) => (order.id === orderId ? data.order : order)));
   }
 
   async function uploadImage(file: File | undefined) {
@@ -418,24 +434,28 @@ export function AdminApp() {
             </button>
           </div>
           <div className="orderList">
-            {orders.map((order) => (
-              <article className="order" key={order.id}>
-                <div>
-                  <strong>{order.guest_name}</strong>
-                  <span>{statusLabels[order.status]} · ¥{order.total}</span>
-                </div>
-                <p>{order.order_items?.map((item) => `${item.name_snapshot} × ${item.quantity}`).join("，")}</p>
-                <p>{order.requested_time || "未填时间"} · {order.contact || "未填联系方式"}</p>
-                {order.note ? <p>{order.note}</p> : null}
-                <div className="buttonRow">
-                  {(["accepted", "cooking", "completed", "cancelled"] as OrderStatus[]).map((status) => (
-                    <button className="button small" key={status} onClick={() => updateStatus(order.id, status)} type="button">
-                      {statusLabels[status]}
-                    </button>
-                  ))}
-                </div>
-              </article>
-            ))}
+            {orders.length ? (
+              orders.map((order) => (
+                <article className="order" key={order.id}>
+                  <div>
+                    <strong>{order.guest_name}</strong>
+                    <span>{statusLabels[order.status]} · ¥{order.total}</span>
+                  </div>
+                  <p>{order.order_items?.map((item) => `${item.name_snapshot} × ${item.quantity}`).join("，")}</p>
+                  <p>{order.requested_time || "未填时间"} · {order.contact || "未填联系方式"}</p>
+                  {order.note ? <p>{order.note}</p> : null}
+                  <div className="buttonRow">
+                    {(["accepted", "cooking", "completed", "cancelled"] as OrderStatus[]).map((status) => (
+                      <button className="button small" key={status} onClick={() => updateStatus(order.id, status)} type="button">
+                        {statusLabels[status]}
+                      </button>
+                    ))}
+                  </div>
+                </article>
+              ))
+            ) : (
+              <p className="mutedText">暂时没有待处理订单。</p>
+            )}
           </div>
         </section>
       ) : null}
